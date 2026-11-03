@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>财务自由计算器 · FIRE 进度测算</title>
+<meta name="description" content="基于 4% 原则与复利增长模型的财务自由（FIRE）进度计算器：测算所需储备金、自由年龄与财富增长历程。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%234f46e5'/%3E%3Ctext x='32' y='44' font-size='36' font-family='system-ui,sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'%3E%C2%A5%3C/text%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#f5f7fb;
+    --card:#ffffff;
+    --ink:#0f172a;
+    --ink-2:#475569;
+    --ink-3:#94a3b8;
+    --line:#e6eaf2;
+    --brand:#4f46e5;
+    --brand-2:#7c3aed;
+    --brand-soft:#eef2ff;
+    --good:#059669;
+    --warn:#d97706;
+    --radius:16px;
+    --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:radial-gradient(1200px 600px at 80% -10%,#eef2ff 0%,transparent 60%),var(--bg);
+    color:var(--ink);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 64px}
+  /* Header */
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{
+    width:44px;height:44px;border-radius:13px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--brand),var(--brand-2));
+    display:grid;place-items:center;color:#fff;font-weight:800;font-size:20px;
+    box-shadow:0 8px 20px rgba(79,70,229,.35);
+  }
+  .brand h1{font-size:19px;margin:0;letter-spacing:.2px}
+  .brand p{margin:0;font-size:12.5px;color:var(--ink-3)}
+  .pill{
+    font-size:12.5px;color:var(--brand);background:var(--brand-soft);
+    padding:7px 13px;border-radius:999px;font-weight:600;white-space:nowrap;
+  }
+  /* Hero text */
+  .hero{margin-bottom:22px}
+  .hero h2{font-size:24px;margin:0 0 6px;letter-spacing:.3px}
+  .hero p{margin:0;color:var(--ink-2);font-size:14px;max-width:760px}
+  /* Layout */
+  .grid{display:grid;grid-template-columns:410px 1fr;gap:22px;align-items:start}
+  @media (max-width:960px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:20px 22px}
+  /* Form */
+  .panel-title{font-size:13px;font-weight:700;letter-spacing:.6px;color:var(--ink-3);text-transform:uppercase;margin:0 0 14px}
+  .field{margin-bottom:18px}
+  .field:last-child{margin-bottom:2px}
+  .field .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .field label{font-size:14px;color:var(--ink);font-weight:600}
+  .field .val{font-size:13px;color:var(--brand);font-weight:700;font-variant-numeric:tabular-nums}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;
+    background:linear-gradient(90deg,var(--brand),var(--brand-2));
+    outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;
+    background:#fff;border:3px solid var(--brand);box-shadow:0 2px 8px rgba(79,70,229,.4);cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--brand);cursor:pointer;
+  }
+  .num-input{
+    width:100%;padding:10px 12px;font-size:14px;color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;background:#fbfcfe;
+    font-variant-numeric:tabular-nums;transition:border-color .15s,box-shadow .15s;
+  }
+  .num-input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);background:#fff}
+  .hint{font-size:12px;color:var(--ink-3);margin-top:6px}
+  .divider{height:1px;background:var(--line);margin:6px 0 18px}
+  /* Result stats */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+  @media (max-width:560px){.stats{grid-template-columns:1fr}}
+  .stat{padding:18px 18px 16px;border-radius:14px;border:1px solid var(--line);background:#fbfcff;position:relative;overflow:hidden}
+  .stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--brand),var(--brand-2))}
+  .stat .k{font-size:12.5px;color:var(--ink-3);font-weight:600;margin-bottom:6px}
+  .stat .v{font-size:25px;font-weight:800;letter-spacing:.3px;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .stat .v.accent{background:linear-gradient(120deg,var(--brand),var(--brand-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .s{font-size:12px;color:var(--ink-2);margin-top:4px}
+  .stat .s.good{color:var(--good)}
+  /* progress */
+  .prog-wrap{margin:2px 0 22px}
+  .prog-top{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-2);margin-bottom:7px}
+  .prog-top b{color:var(--brand)}
+  .prog{height:10px;border-radius:999px;background:#e9edf6;overflow:hidden}
+  .prog > i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--brand-2));transition:width .5s cubic-bezier(.2,.8,.2,1)}
+  /* chart */
+  .chart-card{margin-bottom:20px}
+  .chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .chart-head h3{margin:0;font-size:15px}
+  .chart-head .badge{font-size:11.5px;color:var(--ink-3);background:#f1f4fa;padding:4px 10px;border-radius:999px}
+  canvas{width:100%;height:220px;display:block}
+  /* table */
+  .table-card h3{margin:0 0 4px;font-size:15px}
+  .table-card .sub{margin:0 0 12px;font-size:12.5px;color:var(--ink-3)}
+  .table-scroll{max-height:460px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{
+    position:sticky;top:0;background:#f7f9fd;color:var(--ink-3);font-weight:700;font-size:12px;
+    text-transform:uppercase;letter-spacing:.4px;padding:11px 14px;text-align:right;border-bottom:1px solid var(--line);z-index:1;
+  }
+  thead th:first-child,thead th:nth-child(2){text-align:left}
+  tbody td{padding:10px 14px;text-align:right;border-bottom:1px solid #f1f4fa;font-variant-numeric:tabular-nums;color:var(--ink)}
+  tbody td:first-child,tbody td:nth-child(2){text-align:left;color:var(--ink-2)}
+  tbody tr:hover td{background:#fafbff}
+  tbody tr.reach td{background:#f0fdf7}
+  tbody tr.reach td:first-child{box-shadow:inset 3px 0 0 var(--good)}
+  .prog-cell{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+  .mini{width:54px;height:6px;border-radius:999px;background:#e9edf6;overflow:hidden}
+  .mini > i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-2));border-radius:999px}
+  td .num{color:var(--ink)}
+  /* explain */
+  .explain{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+  @media (max-width:820px){.explain{grid-template-columns:1fr}}
+  .explain .card.pad h4{margin:0 0 8px;font-size:14.5px}
+  .explain .card.pad p{margin:0;font-size:13.5px;color:var(--ink-2)}
+  .note{margin-top:18px;font-size:12.5px;color:var(--ink-3);border-left:3px solid var(--line);padding-left:12px}
+  footer{margin-top:40px;text-align:center;font-size:12.5px;color:var(--ink-3)}
+  footer a{color:var(--brand);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">¥</div>
+      <div>
+        <h1>财务自由计算器</h1>
+        <p>FIRE · Financial Independence Progress</p>
+      </div>
+    </div>
+    <span class="pill">所有计算均在本地完成</span>
+  </header>
+
+  <section class="hero">
+    <h2>专业级财务自由（FIRE）进度测算</h2>
+    <p>通过 4% 原则与复利增长模型，测算您的提前退休时间与所需储备金，助您科学规划财富人生。</p>
+  </section>
+
+  <div class="grid">
+    <!-- 左侧：输入 -->
+    <div class="card pad" aria-label="输入参数">
+      <h3 class="panel-title">个人现状</h3>
+      <div class="field">
+        <div class="row"><label for="age">当前年龄</label><span class="val" id="ageVal">25 岁</span></div>
+        <input type="range" id="age" min="18" max="65" step="1" value="25" />
+      </div>
+      <div class="field">
+        <label for="assets">现有资产 (元)</label>
+        <input class="num-input" type="number" id="assets" min="0" step="1000" value="50000" />
+      </div>
+
+      <div class="divider"></div>
+      <h3 class="panel-title">收支规划</h3>
+      <div class="field">
+        <label for="invest">每月新增投入 (元)</label>
+        <input class="num-input" type="number" id="invest" min="0" step="500" value="5000" />
+      </div>
+      <div class="field">
+        <label for="expense">自由后每月开支 (元)</label>
+        <input class="num-input" type="number" id="expense" min="0" step="500" value="10000" />
+      </div>
+
+      <div class="divider"></div>
+      <h3 class="panel-title">市场预期</h3>
+      <div class="field">
+        <div class="row"><label for="ret">预期年化收益率</label><span class="val" id="retVal">7%</span></div>
+        <input type="range" id="ret" min="1" max="15" step="0.5" value="7" />
+      </div>
+      <div class="field">
+        <div class="row"><label for="infl">预期通胀率</label><span class="val" id="inflVal">2.5%</span></div>
+        <input type="range" id="infl" min="0" max="8" step="0.1" value="2.5" />
+      </div>
+      <div class="hint">实际收益 = 年化收益率 − 通胀率，按实际购买力折算。</div>
+    </div>
+
+    <!-- 右侧：结果 -->
+    <div>
+      <div class="stats">
+        <div class="stat">
+          <div class="k">自由所需资产</div>
+          <div class="v accent" id="targetVal">¥3,000,000</div>
+          <div class="s">基于 4% 提款原则计算</div>
+        </div>
+        <div class="stat">
+          <div class="k">自由年龄</div>
+          <div class="v" id="freedomAge">51 岁</div>
+          <div class="s" id="freedomAgeSub">距离现在还有 26 年</div>
+        </div>
+        <div class="stat">
+          <div class="k">自由日期</div>
+          <div class="v" id="freedomYear">2052 年</div>
+          <div class="s good" id="freedomYearSub">开启财务自由人生</div>
+        </div>
+      </div>
+
+      <div class="prog-wrap card pad" style="padding:16px 18px">
+        <div class="prog-top"><span>当前财富进度</span><b id="progText">1.7%</b></div>
+        <div class="prog"><i id="progBar"></i></div>
+      </div>
+
+      <div class="card pad chart-card">
+        <div class="chart-head">
+          <h3>财富增长走势</h3>
+          <span class="badge">资产总额 vs 自由目标</span>
+        </div>
+        <canvas id="chart"></canvas>
+      </div>
+
+      <div class="card pad table-card">
+        <h3>财富增长历程</h3>
+        <p class="sub">年度预测（按实际购买力折算）</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>年份</th><th>年龄</th><th>累计本金</th><th>资产总额</th><th>进度</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="explain">
+    <div class="card pad">
+      <h4>什么是 4% 原则？</h4>
+      <p>这是麻省理工学院学者提出的经验法则：如果你的年度开支占总资产的比例不超过 4%，且资产配置得当，那么你的财富大概率可以维持 30 年以上甚至更久。</p>
+    </div>
+    <div class="card pad">
+      <h4>复利的力量</h4>
+      <p>本计算器考虑了资产的复利增长。通过长期定投和再投资，您的财富将呈现指数级增长，大大缩短实现财务自由所需的时间。</p>
+    </div>
+  </div>
+
+  <p class="note">说明：计算结果基于您填写的收益率、通胀率等假设参数进行估算，仅供参考，不构成投资建议。4% 原则为经验法则，并非收益或维持时长的保证。</p>
+
+  <footer>
+    财务自由计算器 · 静态版 · 数据仅在本地浏览器计算
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  var el = {
+    age: $("age"), ageVal: $("ageVal"),
+    assets: $("assets"),
+    invest: $("invest"),
+    expense: $("expense"),
+    ret: $("ret"), retVal: $("retVal"),
+    infl: $("infl"), inflVal: $("inflVal"),
+    targetVal: $("targetVal"),
+    freedomAge: $("freedomAge"),
+    freedomAgeSub: $("freedomAgeSub"),
+    freedomYear: $("freedomYear"),
+    freedomYearSub: $("freedomYearSub"),
+    progText: $("progText"),
+    progBar: $("progBar"),
+    tbody: $("tbody"),
+    chart: $("chart")
+  };
+
+  var CURRENT_YEAR = new Date().getFullYear();
+
+  function fmtMoney(n){
+    if (!isFinite(n)) return "—";
+    n = Math.round(n);
+    return "¥" + n.toLocaleString("en-US");
+  }
+  function fmtShort(n){
+    if (!isFinite(n)) return "—";
+    return "¥" + Math.round(n).toLocaleString("en-US");
+  }
+  function num(v){ var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function clampNonNeg(n){ return n < 0 ? 0 : n; }
+
+  function readInputs(){
+    return {
+      age: clampNonNeg(num(el.age.value)),
+      assets: clampNonNeg(num(el.assets.value)),
+      invest: clampNonNeg(num(el.invest.value)),
+      expense: clampNonNeg(num(el.expense.value)),
+      ret: num(el.ret.value),
+      infl: num(el.infl.value)
+    };
+  }
+
+  // 核心计算：目标资产(4%原则) + 实际收益率月度复利 + 每月定投
+  function compute(p){
+    var target = p.expense * 12 / 0.04;               // 4% 提款原则
+    var realAnnual = p.ret - p.infl;                  // 实际年化收益
+    var monthlyRate = realAnnual / 100 / 12;          // 月度实际收益
+    var monthlyInvest = p.invest;
+
+    var assets = p.assets;
+    var rows = [];
+    var freedomIndex = -1;                            // 从第几年(按年计)达成
+    var MAX_YEARS = 60;
+
+    for (var y = 1; y <= MAX_YEARS; y++){
+      // 每年 12 个月复利 + 定投
+      for (var m = 0; m < 12; m++){
+        assets = assets * (1 + monthlyRate) + monthlyInvest;
+      }
+      var principal = p.assets + monthlyInvest * 12 * y;
+      var progress = target > 0 ? (assets / target) * 100 : 0;
+
+      rows.push({
+        year: CURRENT_YEAR + y,
+        age: p.age + y,
+        principal: principal,
+        assets: assets,
+        progress: progress,
+        reached: target > 0 && assets >= target && freedomIndex === -1
+      });
+
+      if (freedomIndex === -1 && target > 0 && assets >= target){
+        freedomIndex = y;
+      }
+      // 达成后再补 4 年即停止
+      if (freedomIndex !== -1 && y >= freedomIndex + 4) break;
+      if (y >= 40 && freedomIndex === -1) break;       // 未达成则最多展示 40 年
+    }
+
+    return {
+      target: target,
+      realAnnual: realAnnual,
+      rows: rows,
+      freedomIndex: freedomIndex,
+      freedomAge: freedomIndex > 0 ? p.age + freedomIndex : null,
+      freedomYear: freedomIndex > 0 ? CURRENT_YEAR + freedomIndex : null,
+      currentProgress: target > 0 ? (p.assets / target) * 100 : 0
+    };
+  }
+
+  var lastRows = [];
+  var lastTarget = 0;
+
+  function renderStats(p, r){
+    el.targetVal.textContent = fmtMoney(r.target);
+
+    if (r.freedomAge !== null){
+      var yearsLeft = r.freedomIndex;
+      el.freedomAge.textContent = r.freedomAge + " 岁";
+      el.freedomAgeSub.textContent = yearsLeft > 0
+        ? "距离现在还有 " + yearsLeft + " 年"
+        : "已达成";
+      el.freedomYear.textContent = r.freedomYear + " 年";
+      el.freedomYearSub.textContent = "开启财务自由人生";
+    } else {
+      el.freedomAge.textContent = "—";
+      el.freedomAgeSub.textContent = "按当前参数暂未达成";
+      el.freedomYear.textContent = "—";
+      el.freedomYearSub.textContent = "可尝试提高收益率或定投额";
+    }
+
+    var cp = Math.max(0, r.currentProgress);
+    var shown = Math.min(cp, 100);
+    el.progText.textContent = cp.toFixed(1) + "%";
+    el.progBar.style.width = shown + "%";
+  }
+
+  function renderTable(r){
+    var html = "";
+    lastRows = r.rows;
+    lastTarget = r.target;
+
+    if (!r.rows.length){
+      html = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px">暂无数据</td></tr>';
+      el.tbody.innerHTML = html;
+      return;
+    }
+
+    for (var i = 0; i < r.rows.length; i++){
+      var row = r.rows[i];
+      var pct = Math.max(0, row.progress);
+      var mini = Math.min(pct, 100);
+      html += '<tr class="' + (row.reached ? "reach" : "") + '">'
+        + '<td>' + row.year + '</td>'
+        + '<td>' + row.age + ' 岁</td>'
+        + '<td>' + fmtMoney(row.principal) + '</td>'
+        + '<td class="num">' + fmtMoney(row.assets) + '</td>'
+        + '<td><div class="prog-cell"><span>' + Math.round(pct) + '%</span>'
+        + '<span class="mini"><i style="width:' + mini + '%"></i></span></div></td>'
+        + '</tr>';
+    }
+    el.tbody.innerHTML = html;
+  }
+
+  // 折线图
+  function drawChart(rows, target){
+    var canvas = el.chart;
+    var dpr = window.devicePixelRatio || 1;
+    var rect = canvas.getBoundingClientRect();
+    var w = rect.width || 600;
+    var h = rect.height || 220;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    if (!rows.length){
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "13px system-ui,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("暂无数据", w / 2, h / 2);
+      return;
+    }
+
+    var padL = 8, padR = 8, padT = 14, padB = 18;
+    var plotW = w - padL - padR;
+    var plotH = h - padT - padB;
+
+    var maxVal = Math.max(target, rows[rows.length - 1].assets);
+    if (maxVal <= 0) maxVal = 1;
+    maxVal = maxVal * 1.08;
+
+    function x(i){ return padL + (rows.length === 1 ? plotW / 2 : (i / (rows.length - 1)) * plotW); }
+    function y(v){ return padT + plotH - (v / maxVal) * plotH; }
+
+    // 网格
+    ctx.strokeStyle = "#eef1f8";
+    ctx.lineWidth = 1;
+    for (var g = 0; g <= 4; g++){
+      var gy = padT + (plotH / 4) * g;
+      ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(w - padR, gy); ctx.stroke();
+    }
+
+    // 目标线
+    ctx.strokeStyle = "#f59e0b";
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(padL, y(target));
+    ctx.lineTo(w - padR, y(target));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#b45309";
+    ctx.font = "11px system-ui,sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("目标 " + fmtShort(target), padL + 2, y(target) - 6);
+
+    // 面积
+    var grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+    grad.addColorStop(0, "rgba(79,70,229,.28)");
+    grad.addColorStop(1, "rgba(124,58,237,.02)");
+    ctx.beginPath();
+    ctx.moveTo(x(0), padT + plotH);
+    for (var i = 0; i < rows.length; i++){ ctx.lineTo(x(i), y(rows[i].assets)); }
+    ctx.lineTo(x(rows.length - 1), padT + plotH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // 折线
+    ctx.beginPath();
+    for (var j = 0; j < rows.length; j++){
+      var px = x(j), py = y(rows[j].assets);
+      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    var lg = ctx.createLinearGradient(padL, 0, w - padR, 0);
+    lg.addColorStop(0, "#4f46e5");
+    lg.addColorStop(1, "#7c3aed");
+    ctx.strokeStyle = lg;
+    ctx.lineWidth = 2.4;
+    ctx.lineJoin = "round";
+    ctx.stroke();
+
+    // 达成点
+    for (var k = 0; k < rows.length; k++){
+      if (rows[k].reached){
+        ctx.beginPath();
+        ctx.arc(x(k), y(rows[k].assets), 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#059669";
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        break;
+      }
+    }
+  }
+
+  function update(){
+    var p = readInputs();
+    el.ageVal.textContent = p.age + " 岁";
+    el.retVal.textContent = (p.ret % 1 === 0 ? p.ret.toFixed(0) : p.ret) + "%";
+    el.inflVal.textContent = (p.infl % 1 === 0 ? p.infl.toFixed(0) : p.infl) + "%";
+
+    var r = compute(p);
+    renderStats(p, r);
+    renderTable(r);
+    drawChart(r.rows, r.target);
+  }
+
+  // 事件绑定
+  var ids = ["age","assets","invest","expense","ret","infl"];
+  ids.forEach(function(id){
+    var node = el[id];
+    node.addEventListener("input", update);
+    node.addEventListener("change", update);
+  });
+
+  var rafId = null;
+  window.addEventListener("resize", function(){
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(function(){ drawChart(lastRows, lastTarget); });
+  });
+
+  // 初始渲染
+  update();
+})();
+</script>
+</body>
+</html>
